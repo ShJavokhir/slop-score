@@ -35,40 +35,42 @@ export function RepositoryCard({
   };
 
   return (
-    <Link href={`/${repoSlug}`}>
+    <Link href={`/${repoSlug}`} className="block group">
       <Card hover className="h-full">
-        <CardContent className="flex items-center gap-4">
+        <CardContent className="flex items-center gap-6 py-5">
           {rank !== undefined && (
-            <div className="flex-shrink-0 w-8 text-center">
-              <span className="text-lg font-bold text-gray-400">#{rank}</span>
+            <div className="flex-shrink-0 w-10 text-center">
+              <span className="text-xl font-semibold text-gray-300 group-hover:text-gray-400 transition-colors">
+                #{rank}
+              </span>
             </div>
           )}
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 truncate mb-1">
+            <h3 className="text-lg font-semibold text-gray-900 truncate mb-2 group-hover:text-blue-600 transition-colors">
               {repoName}
             </h3>
-            <div className="flex items-center gap-3 text-sm text-gray-600">
+            <div className="flex items-center gap-4 text-sm text-gray-600">
               {stars !== undefined && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
-                  <span>{stars.toLocaleString()}</span>
+                  <span className="font-medium">{stars.toLocaleString()}</span>
                 </div>
               )}
               {language && <Badge variant="neutral">{language}</Badge>}
-              <span className="text-xs">
+              <span className="text-xs text-gray-500">
                 {new Date(analyzedDate).toLocaleDateString()}
               </span>
             </div>
           </div>
 
           <div className="flex-shrink-0 text-right">
-            <div className={`text-3xl font-bold ${getScoreColor(slopScore)}`}>
+            <div className={`text-4xl font-semibold ${getScoreColor(slopScore)} mb-1`}>
               {slopScore}
             </div>
-            <Badge variant={getScoreVariant(slopScore)} className="mt-1">
+            <Badge variant={getScoreVariant(slopScore)}>
               {slopScore <= 30 ? 'Low' : slopScore <= 60 ? 'Medium' : 'High'} Slop
             </Badge>
           </div>
