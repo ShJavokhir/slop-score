@@ -14,8 +14,6 @@ Give SlopScore a public GitHub repo URL. It returns a comprehensive analysis:
 
 **Hardcode Analysis** - Identifies how much of the project relies on hardcoded values versus actual logic.
 
-**Originality Score** - Finds similar projects across the internet to determine if this is truly novel or the 47th todo app wrapper.
-
 ## Features
 
 - **Simple Search** - Paste a GitHub URL, get instant analysis
