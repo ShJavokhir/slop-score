@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { LayoutDashboard, Bot, FileText, Code } from 'lucide-react';
 import ScoreGauge from '@/components/ScoreGauge';
 import MetricCard from '@/components/MetricCard';
 import SlopSignalCard from '@/components/SlopSignalCard';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import { PageLoadingSkeleton } from '@/components/LoadingSkeleton';
+import { TabNav } from '@/components/ui/tab-nav';
 import { formatNumber, formatDate, getSignalTypeLabel } from '@/lib/utils';
 import type { SlopSignalType, ImplementationStatus } from '@/lib/types';
 
@@ -108,10 +110,10 @@ export default function RepoAnalysisPage() {
   }
 
   const tabs = [
-    { id: 'overview' as TabType, label: 'Overview' },
-    { id: 'slop-details' as TabType, label: 'AI Slop Details' },
-    { id: 'readme-check' as TabType, label: 'README Check' },
-    { id: 'hardcode' as TabType, label: 'Hardcode Analysis' },
+    { id: 'overview' as TabType, name: 'Overview', icon: LayoutDashboard },
+    { id: 'slop-details' as TabType, name: 'AI Slop', icon: Bot },
+    { id: 'readme-check' as TabType, name: 'README', icon: FileText },
+    { id: 'hardcode' as TabType, name: 'Hardcode', icon: Code },
   ];
 
   const groupedSignals = data.slop_signals.reduce((acc, signal) => {
@@ -186,26 +188,17 @@ export default function RepoAnalysisPage() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg border border-gray-200 mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex gap-8 px-6" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+        <div className="mb-6">
+          <TabNav
+            items={tabs}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as TabType)}
+            className="max-w-2xl mx-auto"
+          />
+        </div>
 
-          <div className="p-6">
+        {/* Tab Content */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-6">
@@ -350,7 +343,6 @@ export default function RepoAnalysisPage() {
                 </div>
               </div>
             )}
-          </div>
         </div>
       </div>
     </div>

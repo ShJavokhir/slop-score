@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import SearchInput from '@/components/SearchInput';
+import { SearchBar } from '@/components/ui/search-bar';
 import RepositoryCard from '@/components/RepositoryCard';
 import EmptyState from '@/components/EmptyState';
-import { parseGitHubUrl, generateRepoSlug } from '@/lib/utils';
+import { parseGitHubUrl, generateRepoSlug, isValidGitHubUrl } from '@/lib/utils';
 
 // Mock data for "Recent High Slopers" - will be replaced with real data from API
 const mockRecentRepos = [
@@ -41,14 +41,24 @@ const mockRecentRepos = [
 export default function Home() {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSearch = async (url: string) => {
+  const handleSearch = async (query: string) => {
+    setError('');
+
+    // Validate GitHub URL
+    if (!isValidGitHubUrl(query)) {
+      setError('Please enter a valid GitHub repository URL');
+      return;
+    }
+
     setIsAnalyzing(true);
 
     // Parse GitHub URL
-    const parsed = parseGitHubUrl(url);
+    const parsed = parseGitHubUrl(query);
     if (!parsed) {
       setIsAnalyzing(false);
+      setError('Could not parse GitHub URL');
       return;
     }
 
@@ -81,17 +91,19 @@ export default function Home() {
           </div>
 
           {/* Search Box */}
-          <div className="mt-12 max-w-2xl mx-auto">
-            <SearchInput
-              onSubmit={handleSearch}
-              isLoading={isAnalyzing}
+          <div className="mt-12 flex flex-col items-center gap-4">
+            <SearchBar
+              onSearch={handleSearch}
               placeholder="https://github.com/facebook/react"
             />
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-500">
-                Enter any public GitHub repository URL to analyze
+            {error && (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
               </p>
-            </div>
+            )}
+            <p className="text-sm text-gray-500">
+              Enter any public GitHub repository URL to analyze
+            </p>
           </div>
         </div>
       </section>
