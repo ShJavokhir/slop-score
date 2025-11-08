@@ -13,8 +13,11 @@ const querySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   minScore: z.coerce.number().min(0).max(100).optional(),
   maxScore: z.coerce.number().min(0).max(100).optional(),
-  search: z.string().optional(),
-});
+  search: z.string().max(200).optional(),
+}).refine(
+  (data) => data.minScore === undefined || data.maxScore === undefined || data.minScore <= data.maxScore,
+  { message: 'minScore must be less than or equal to maxScore' }
+);
 
 type QueryParams = z.infer<typeof querySchema>;
 
@@ -87,6 +90,7 @@ export async function GET(req: NextRequest) {
     const conditions = [eq(repositories.userId, userId)];
 
     // Add score filters if provided
+    // Note: slopScore is decimal type (stored as string), so we convert numbers to strings for comparison
     if (params.minScore !== undefined) {
       conditions.push(gte(analyses.slopScore, params.minScore.toString()));
     }
@@ -94,9 +98,13 @@ export async function GET(req: NextRequest) {
       conditions.push(lte(analyses.slopScore, params.maxScore.toString()));
     }
 
-    // Add search filter if provided
+    // Add search filter if provided (escape SQL LIKE wildcards)
     if (params.search) {
-      conditions.push(ilike(repositories.githubUrl, `%${params.search}%`));
+      const escapedSearch = params.search
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+      conditions.push(ilike(repositories.githubUrl, `%${escapedSearch}%`));
     }
 
     // Build and execute main query

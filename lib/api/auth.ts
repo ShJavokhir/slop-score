@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { ApiError } from './errors';
 
 /**
  * Extract authenticated user ID from Clerk session.
@@ -8,13 +9,7 @@ export async function getUserId(): Promise<string> {
   const { userId } = await auth();
 
   if (!userId) {
-    const error = new Error('Authentication required') as Error & {
-      code: string;
-      statusCode: number;
-    };
-    error.code = 'UNAUTHORIZED';
-    error.statusCode = 401;
-    throw error;
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required');
   }
 
   return userId;

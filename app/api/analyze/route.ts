@@ -62,79 +62,83 @@ function validateRequestBody(body: unknown): { urls: string[] } {
 /**
  * Process single URL: upsert repo, create job, generate analysis.
  * Returns job ID.
+ * All operations wrapped in transaction for atomicity.
  */
 async function processUrl(url: string, userId: string): Promise<string> {
   // Parse URL to extract owner and name
   const { owner, name } = parseGithubUrl(url);
 
-  // Upsert repository (INSERT ... ON CONFLICT DO UPDATE)
-  const [repo] = await db
-    .insert(repositories)
-    .values({
-      userId,
-      githubUrl: url,
-      owner,
-      name,
-    })
-    .onConflictDoUpdate({
-      target: repositories.githubUrl,
-      set: { userId, owner, name },
-    })
-    .returning();
+  // Wrap all DB operations in a single transaction
+  return await db.transaction(async (tx) => {
+    // Upsert repository (INSERT ... ON CONFLICT DO UPDATE)
+    const [repo] = await tx
+      .insert(repositories)
+      .values({
+        userId,
+        githubUrl: url,
+        owner,
+        name,
+      })
+      .onConflictDoUpdate({
+        target: repositories.githubUrl,
+        set: { userId, owner, name },
+      })
+      .returning();
 
-  if (!repo) {
-    throw new ApiError(500, 'DATABASE_ERROR', 'Failed to create/update repository');
-  }
+    if (!repo) {
+      throw new ApiError(500, 'DATABASE_ERROR', 'Failed to create/update repository');
+    }
 
-  // TODO (SQS Integration - see mem-0002):
-  // When SQS integrated, create job with status='pending' instead of 'completed'
-  // Send SQS message with { jobId, repositoryId, githubUrl }
-  // Analysis will be created by callback endpoint when Python service completes
+    // TODO (SQS Integration - see mem-0002):
+    // When SQS integrated, create job with status='pending' instead of 'completed'
+    // Send SQS message with { jobId, repositoryId, githubUrl }
+    // Analysis will be created by callback endpoint when Python service completes
 
-  // Create job with status='completed' (mock for MVP)
-  const [job] = await db
-    .insert(jobs)
-    .values({
-      userId,
-      repositoryId: repo.id,
-      status: 'completed',
-      progress: 100,
-    })
-    .returning();
+    // Create job with status='completed' (mock for MVP)
+    const [job] = await tx
+      .insert(jobs)
+      .values({
+        userId,
+        repositoryId: repo.id,
+        status: 'completed',
+        progress: 100,
+      })
+      .returning();
 
-  if (!job) {
-    throw new ApiError(500, 'DATABASE_ERROR', 'Failed to create job');
-  }
+    if (!job) {
+      throw new ApiError(500, 'DATABASE_ERROR', 'Failed to create job');
+    }
 
-  // TODO (SQS Integration - see mem-0002):
-  // Remove this immediate analysis generation
-  // Analysis will be created by POST /api/jobs/:id/callback endpoint
+    // TODO (SQS Integration - see mem-0002):
+    // Remove this immediate analysis generation
+    // Analysis will be created by POST /api/jobs/:id/callback endpoint
 
-  // Generate mock analysis immediately (MVP only)
-  const mockData = generateMockAnalysis(url);
+    // Generate mock analysis immediately (MVP only)
+    const mockData = generateMockAnalysis(url);
 
-  const [analysis] = await db
-    .insert(analyses)
-    .values({
-      jobId: job.id,
-      repositoryId: repo.id,
-      slopScore: mockData.slopScore.toString(),
-    })
-    .returning();
+    const [analysis] = await tx
+      .insert(analyses)
+      .values({
+        jobId: job.id,
+        repositoryId: repo.id,
+        slopScore: mockData.slopScore.toString(),
+      })
+      .returning();
 
-  if (!analysis) {
-    throw new ApiError(500, 'DATABASE_ERROR', 'Failed to create analysis');
-  }
+    if (!analysis) {
+      throw new ApiError(500, 'DATABASE_ERROR', 'Failed to create analysis');
+    }
 
-  // Insert slop notes
-  if (mockData.notes.length > 0) {
-    await db.insert(slopNotes).values(
-      mockData.notes.map((note) => ({
-        analysisId: analysis.id,
-        note,
-      }))
-    );
-  }
+    // Insert slop notes
+    if (mockData.notes.length > 0) {
+      await tx.insert(slopNotes).values(
+        mockData.notes.map((note) => ({
+          analysisId: analysis.id,
+          note,
+        }))
+      );
+    }
 
-  return job.id;
+    return job.id;
+  });
 }

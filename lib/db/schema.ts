@@ -57,4 +57,7 @@ export const slopNotes = pgTable('slop_notes', {
   analysisId: uuid('analysis_id').notNull().references(() => analyses.id),
   note: text('note').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-});
+}, (table) => ({
+  // Index on analysisId for efficient note lookups
+  analysisIdIdx: index('slop_notes_analysis_id_idx').on(table.analysisId),
+}));

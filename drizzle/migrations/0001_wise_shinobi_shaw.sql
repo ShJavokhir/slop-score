@@ -1,0 +1,1 @@
+CREATE INDEX "slop_notes_analysis_id_idx" ON "slop_notes" USING btree ("analysis_id");
