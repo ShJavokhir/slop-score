@@ -59,7 +59,11 @@ export function RepositoryCard({
               )}
               {language && <Badge variant="neutral">{language}</Badge>}
               <span className="text-xs">
-                {new Date(analyzedDate).toLocaleDateString()}
+                {new Date(analyzedDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                })}
               </span>
             </div>
           </div>
