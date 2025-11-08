@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SlopScore
 
-## Getting Started
+**Stop the slop. Measure what's real.**
 
-First, run the development server:
+SlopScore analyzes GitHub repositories to detect AI-generated code patterns, verify feature completeness, and expose projects that are more vapor than substance.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## What It Does
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Give SlopScore a public GitHub repo URL. It returns a comprehensive analysis:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**README Reality Check** - Compares claimed features against actual implementation. Flags missing, incomplete, or misrepresented functionality.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**AI Detection** - Scans for telltale signs of AI-generated code: verbose naming, obvious comments, unnecessary defensive checks, type gymnastics, generic error handling, inconsistent patterns, and safety theater.
 
-## Learn More
+**Hardcode Analysis** - Identifies how much of the project relies on hardcoded values versus actual logic.
 
-To learn more about Next.js, take a look at the following resources:
+**Originality Score** - Finds similar projects across the internet to determine if this is truly novel or the 47th todo app wrapper.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Simple Search** - Paste a GitHub URL, get instant analysis
+- **Detailed Breakdown** - See exactly why a repo earned its slop score
+- **Slop Leaderboard** - Browse the most egregious offenders
 
-## Deploy on Vercel
+## Why This Matters
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+AI coding tools are flooding GitHub with repos that look impressive but collapse under scrutiny. SlopScore cuts through the noise to show what's actually been built versus what's been vibed into existence.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Perfect for evaluating:
+- Hackathon submissions
+- OSS contributions
+- Job candidate portfolios
+- Your own projects (before someone else does)
+
+---
+
+*Built for a world drowning in slop code. Use responsibly.*
