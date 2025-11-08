@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 from sqs_listener import SQSListener
 from docker_runner import DockerRunner
+from loop_agent import LoopAgent
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -94,6 +95,63 @@ class SimpleListener(SQSListener):
 
         except Exception as e:
             logger.error("Error updating job status: {}".format(e))
+
+    def _chunk_text(self, text, chunk_size=8000):
+        """Yield fixed-size chunks from text for safe DB insertion."""
+        for i in range(0, len(text), chunk_size):
+            yield text[i:i+chunk_size]
+
+    def persist_output_document(self, job_id, repository_id, analysis_id, output_md, system_prompt):
+        """
+        Save output.md content into Supabase.
+        Primary: insert into analysis_documents.
+        Fallback: chunk into slop_notes if analysis_id is available.
+        """
+        # Try primary table
+        try:
+            payload = {
+                'job_id': job_id,
+                'repository_id': repository_id,
+                'document_type': 'output_md',
+                'content': output_md,
+                'system_prompt': system_prompt,
+                'created_at': 'now()'
+            }
+            if analysis_id:
+                payload['analysis_id'] = analysis_id
+            self.supabase.table('analysis_documents').insert(payload).execute()
+            logger.info("Saved output.md to analysis_documents")
+            return True
+        except Exception as e:
+            logger.warning("analysis_documents insert failed ({}). Falling back to slop_notes if possible.".format(e))
+
+        # Fallback to slop_notes if we have an analysis_id
+        if not analysis_id:
+            logger.warning("Cannot fallback to slop_notes: missing analysis_id")
+            return False
+
+        try:
+            # Store system prompt first
+            self.supabase.table('slop_notes').insert({
+                'analysis_id': analysis_id,
+                'note': 'LoopAgent system prompt: {}'.format(system_prompt or '')
+            }).execute()
+
+            chunks = list(self._chunk_text(output_md or '', 8000))
+            total = len(chunks)
+            if total == 0:
+                chunks = ['(empty output.md)']
+                total = 1
+            for idx, chunk in enumerate(chunks, start=1):
+                self.supabase.table('slop_notes').insert({
+                    'analysis_id': analysis_id,
+                    'note': '[output.md chunk {}/{}]\n{}'.format(idx, total, chunk)
+                }).execute()
+            logger.info("Saved output.md in {} slop_notes chunks".format(total))
+            return True
+        except Exception as e:
+            logger.error("Failed to persist output.md via slop_notes: {}".format(e))
+            return False
 
     def interactive_command_loop(self, runner):
         """Prompt user for commands to run inside the Docker container"""
@@ -230,17 +288,17 @@ class SimpleListener(SQSListener):
             if not result['success']:
                 raise Exception("Failed to clone repo: {}".format(result['output']))
 
-            # Provide interactive shell for manual commands
-            safe_update('processing', current_step='Awaiting user commands', progress=40)
-            self.interactive_command_loop(runner)
+            # Optional interactive shell (disabled by default)
+            if os.getenv('ENABLE_INTERACTIVE_SHELL', '').lower() in ('1', 'true', 'yes', 'y'):
+                safe_update('processing', current_step='Awaiting user commands', progress=40)
+                self.interactive_command_loop(runner)
 
-            if analysis_already_exists or job_already_completed:
-                logger.info(
-                    "Skipping automated analysis and database updates for job {} due to existing results"
-                    .format(job_id)
-                )
-                safe_update('completed', progress=100)
-                return True
+            # Run automated LoopAgent to generate output.md
+            safe_update('processing', current_step='Running loop agent', progress=50)
+            agent = LoopAgent(repo_dir="/repo")
+            agent_result = agent.run(runner)
+            output_md = agent_result.get('output_md') or ''
+            system_prompt = agent_result.get('system_prompt') or ''
 
             # Step 2.5: Explore repository structure
             logger.info("Exploring cloned repository...")
@@ -281,24 +339,37 @@ class SimpleListener(SQSListener):
             logger.info("Saving results...")
             self.update_job_status(job_id, 'processing', current_step='Saving results', progress=95)
 
-            # Create analysis record
-            analysis_response = self.supabase.table('analyses').insert({
-                'job_id': job_id,
-                'repository_id': repo.get('id'),
-                'slop_score': slop_score,
-                'analyzed_at': 'now()'
-            }).execute()
+            # Use existing analysis if present; otherwise create a new one
+            analysis_id = None
+            if analysis_already_exists and existing_analysis.data:
+                analysis_id = existing_analysis.data[0].get('id')
+                logger.info("Using existing analysis ID: {}".format(analysis_id))
+            else:
+                analysis_response = self.supabase.table('analyses').insert({
+                    'job_id': job_id,
+                    'repository_id': repo.get('id'),
+                    'slop_score': slop_score,
+                    'analyzed_at': 'now()'
+                }).execute()
+                if analysis_response.data:
+                    analysis_id = analysis_response.data[0]['id']
+                    logger.info("Created analysis with ID: {}".format(analysis_id))
 
-            if analysis_response.data:
-                analysis_id = analysis_response.data[0]['id']
-
-                # Add slop notes
+            # Add a summary note
+            if analysis_id:
                 self.supabase.table('slop_notes').insert({
                     'analysis_id': analysis_id,
                     'note': 'Analysis completed - repository structure analyzed'
                 }).execute()
 
-                logger.info("Analysis saved with ID: {}".format(analysis_id))
+            # Persist the generated output.md into Supabase (robust with fallback)
+            self.persist_output_document(
+                job_id=job_id,
+                repository_id=repo.get('id'),
+                analysis_id=analysis_id,
+                output_md=output_md,
+                system_prompt=system_prompt
+            )
 
             # Mark job as completed
             self.update_job_status(job_id, 'completed', progress=100)
