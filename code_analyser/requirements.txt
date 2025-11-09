@@ -2,3 +2,4 @@ docker
 boto3
 python-dotenv
 supabase
+google-generativeai
