@@ -61,3 +61,17 @@ export const slopNotes = pgTable('slop_notes', {
   // Index on analysisId for efficient note lookups
   analysisIdIdx: index('slop_notes_analysis_id_idx').on(table.analysisId),
 }));
+
+// features table - stores extracted features from README
+export const features = pgTable('features', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  repositoryId: uuid('repository_id').notNull().references(() => repositories.id),
+  featureId: text('feature_id').notNull(), // e.g., "F1", "F2"
+  claim: text('claim').notNull(), // The feature claim from README
+  requirement: text('requirement').notNull(), // Testable functional requirement
+  verificationHint: text('verification_hint').notNull(), // Brief guidance for testing
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  // Index on repositoryId for efficient feature lookups
+  repositoryIdIdx: index('features_repository_id_idx').on(table.repositoryId),
+}));

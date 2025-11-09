@@ -15,4 +15,4 @@ const client = postgres(connectionString);
 export const db = drizzle(client, { schema });
 
 // Export all schema tables for queries
-export { repositories, jobs, analyses, slopNotes, jobStatusEnum } from './schema';
+export { repositories, jobs, analyses, slopNotes, features, jobStatusEnum } from './schema';

@@ -3,7 +3,8 @@ import { getUserId } from '@/lib/api/auth';
 import { errorResponse, ApiError } from '@/lib/api/errors';
 import { githubUrlSchema, parseGithubUrl } from '@/lib/api/validation';
 import { generateMockAnalysis } from '@/lib/api/mock';
-import { db, repositories, jobs, analyses, slopNotes } from '@/lib/db';
+import { db, repositories, jobs, analyses, slopNotes, features } from '@/lib/db';
+import { extractFeaturesFromReadme } from '@/lib/ai/readme-to-features';
 
 /**
  * POST /api/analyze
@@ -137,6 +138,26 @@ async function processUrl(url: string, userId: string): Promise<string> {
           note,
         }))
       );
+    }
+
+    // Extract and store features from README
+    try {
+      const featuresResult = await extractFeaturesFromReadme(url);
+
+      if (featuresResult.features.length > 0) {
+        await tx.insert(features).values(
+          featuresResult.features.map((feature) => ({
+            repositoryId: repo.id,
+            featureId: feature.id,
+            claim: feature.claim,
+            requirement: feature.requirement,
+            verificationHint: feature.verification_hint,
+          }))
+        );
+      }
+    } catch (error) {
+      // Log error but don't fail the entire analysis
+      console.error('Failed to extract features from README:', error);
     }
 
     return job.id;

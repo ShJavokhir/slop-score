@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { ScoreGauge, ScoreBar } from '../components/ScoreGauge';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+
+interface Feature {
+  id: string;
+  claim: string;
+  requirement: string;
+  verification_hint: string;
+}
 
 // Mock data for repository analysis
 const MOCK_ANALYSIS = {
@@ -125,20 +132,62 @@ const MOCK_ANALYSIS = {
   },
 };
 
-type TabType = 'overview' | 'ai-slop' | 'readme' | 'hardcode';
+type TabType = 'overview' | 'ai-slop' | 'readme' | 'features' | 'hardcode';
 
 export default function RepoDetailPage() {
   const params = useParams();
   const repoSlug = params.repoSlug as string;
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [featuresLoading, setFeaturesLoading] = useState(true);
 
   // In a real app, fetch data based on repoSlug
   const analysis = MOCK_ANALYSIS;
+
+  // Fetch features when component mounts
+  useEffect(() => {
+    // TODO: Replace with actual API call once we have repoId
+    // For now, use mock features to demonstrate the UI
+    setFeaturesLoading(false);
+    setFeatures([
+      {
+        id: 'F1',
+        claim: 'Real-time collaboration with WebSocket support',
+        requirement: 'Given multiple users are connected, when one user makes a change, then all other users should see the update within 100ms',
+        verification_hint: 'Start server, connect two clients, verify WebSocket connection and message propagation',
+      },
+      {
+        id: 'F2',
+        claim: 'Multi-factor authentication (MFA)',
+        requirement: 'User authentication system supports at least one form of 2FA (TOTP, SMS, or hardware key)',
+        verification_hint: 'Check for authentication routes, verify 2FA setup flow exists',
+      },
+      {
+        id: 'F3',
+        claim: 'Advanced analytics dashboard',
+        requirement: 'Dashboard displays at least 5 key metrics with data visualization components',
+        verification_hint: 'Navigate to /dashboard route, verify chart/graph components render with data',
+      },
+      {
+        id: 'F4',
+        claim: 'Database support for PostgreSQL and MySQL',
+        requirement: 'Application can connect to and perform CRUD operations on both PostgreSQL and MySQL databases',
+        verification_hint: 'Check database adapter/driver code, verify connection configuration for both DB types',
+      },
+      {
+        id: 'F5',
+        claim: 'RESTful API with rate limiting',
+        requirement: 'API endpoints exist with rate limiting middleware that restricts requests per time window',
+        verification_hint: 'Make repeated API requests, verify rate limit headers and 429 response codes',
+      },
+    ]);
+  }, [repoSlug]);
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Overview' },
     { id: 'ai-slop' as TabType, label: 'AI Slop Details' },
     { id: 'readme' as TabType, label: 'README Check' },
+    { id: 'features' as TabType, label: 'Features' },
     { id: 'hardcode' as TabType, label: 'Hardcode Analysis' },
   ];
 
@@ -336,6 +385,56 @@ export default function RepoDetailPage() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'features' && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Extracted Features from README
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 mb-6">
+                  High-level features claimed in the README, extracted by AI and converted into testable requirements.
+                </p>
+
+                {featuresLoading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Loading features...
+                  </div>
+                ) : features.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No features extracted yet. Features will be extracted when you submit a repository for analysis.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {features.map((feature) => (
+                      <div key={feature.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900">{feature.claim}</h4>
+                          <Badge variant="neutral">{feature.id}</Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs font-medium text-gray-500 uppercase">Requirement:</span>
+                            <p className="text-sm text-gray-700 mt-1">{feature.requirement}</p>
+                          </div>
+
+                          <div>
+                            <span className="text-xs font-medium text-gray-500 uppercase">Verification Hint:</span>
+                            <p className="text-sm text-gray-600 mt-1 italic">{feature.verification_hint}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
